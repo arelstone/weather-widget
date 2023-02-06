@@ -1,9 +1,8 @@
-import React, { SyntheticEvent, useEffect, useState } from 'react';
-import { compass } from './utils/compass';
+import { SyntheticEvent, useEffect, useState } from 'react';
 
-
-
-type Data = {
+type ApiResponse = {
+  cod: number
+  message?: string
   city: string
   temperature: {
     unit: string
@@ -17,50 +16,31 @@ type Data = {
 }
 
 function App() {
-
-  const getQueryFromUrl = () => {
-    const { href } = globalThis.location ?? {}
-
-    if (!href) {
-      return null
-    }
-
-    return new URL(href).searchParams.get('city')?.toLowerCase()
-  }
-
-  const [data, setData] = useState<Data>()
-  const [query, setQuery] = useState<string>(getQueryFromUrl() ?? 'København')
+  const [data, setData] = useState<ApiResponse>()
+  const [query, setQuery] = useState<string>(new URL(globalThis?.location?.href).searchParams.get('city') ?? '')
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     fetchData()
   }, [])
 
-
   const fetchData = async () => {
     setErrorMessage(undefined)
 
-    const url = new URL('http://api.openweathermap.org/data/2.5/weather')
-    url.searchParams.append('q', query)
-    url.searchParams.append('appid', process.env.REACT_APP_OPEN_WEATHER_APP_ID!)
+    const url = new URL(process.env.REACT_APP_API_URL!)
+    url.searchParams.append('city', query)
     url.searchParams.append('lang', 'da')
     url.searchParams.append('units', 'metric')
 
     const res = await fetch(`${url}`)
-    const json: WeatherResponse = await res.json()
+    const json: ApiResponse = await res.json()
 
     if (Number(json.cod) !== 200) {
       setErrorMessage(json.message)
       return
     }
 
-    setData({
-      city: json?.name,
-      humidity: json.main.humidity,
-      temperature: { unit: 'C', value: Math.round(Math.ceil(json.main.temp)) },
-      wind: { direction: compass(json.wind), value: Math.round(Math.ceil(json.wind.speed)) },
-    })
-
+    setData(json)
   }
 
   const onSubmit = (event: SyntheticEvent) => {
@@ -99,40 +79,3 @@ function App() {
 }
 
 export default App;
-
-type WeatherResponse = {
-  coord: { lon: number, lat: number },
-  weather: [
-    {
-      id: number
-      main: string,
-      description: string,
-      icon: string
-    }
-  ],
-  base: string
-  main: {
-    temp: number
-    feels_like: number
-    temp_min: number
-    temp_max: number
-    pressure: number
-    humidity: number
-  },
-  visibility: number,
-  wind: { speed: number, deg: number },
-  clouds: { all: number },
-  dt: number,
-  sys: {
-    type: number
-    id: number,
-    country: string,
-    sunrise: number,
-    sunset: number
-  },
-  timezone: number
-  id: number
-  name: string
-  cod: number | string
-  message?: string
-}
